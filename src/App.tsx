@@ -1,7 +1,9 @@
-import { useState } from "react";
-import AuthForm from "@/components/AuthForm";
-import Chat from "@/components/Chat";
+import { lazy, useState, Suspense } from "react";
+import Loader from "@/components/Loader";
 import "./index.css";
+
+const AuthForm = lazy(() => import("@/components/AuthForm"));
+const Chat = lazy(() => import("@/components/Chat"));
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -18,11 +20,13 @@ const App = () => {
 
   return (
     <div className="min-h-screen w-full bg-gray-100">
-      {isAuthenticated ? (
-        <Chat idInstance={idInstance} apiTokenInstance={apiTokenInstance} phone={phoneNumber} />
-      ) : (
-        <AuthForm onAuth={handleAuth} />
-      )}
+      <Suspense fallback={<Loader />}>
+        {isAuthenticated ? (
+          <Chat idInstance={idInstance} apiTokenInstance={apiTokenInstance} phone={phoneNumber} />
+        ) : (
+          <AuthForm onAuth={handleAuth} />
+        )}
+      </Suspense>
     </div>
   );
 };

@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
-import UserIcon from "@/assets/images/user.png";
+import { sendMessage } from "@/api/sendMessages.ts";
+import { fetchMessage } from "@/api/fetchMessages.ts";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
+import UserIcon from "@/assets/images/user.png";
 
 const Chat = ({
   idInstance,
@@ -16,38 +17,23 @@ const Chat = ({
   const [messages, setMessages] = useState<Array<{ text: string; isMe: boolean }>>([]);
   const [newMessage, setNewMessage] = useState("");
 
-  const sendMessage = async (message: string) => {
+  const handleSendMessage = async (message: string) => {
     if (!message.trim()) return;
 
-    const url = `https://api.green-api.com/waInstance${idInstance}/SendMessage/${apiTokenInstance}`;
-    const data = {
-      chatId: `${phone}@c.us`,
-      message: message,
-    };
-
     try {
-      const response = await axios.post(url, data);
-      console.log("Сообщение отправлено:", response.data);
-      setMessages([...messages, { text: message, isMe: true }]);
+      await sendMessage(idInstance, apiTokenInstance, phone, message);
+      setMessages((prevMessages) => [...prevMessages, { text: message, isMe: true }]);
       setNewMessage("");
     } catch (error) {
       console.error("Ошибка отправки сообщения:", error);
     }
   };
 
-  const receiveMessage = async () => {
-    const url = `https://api.green-api.com/waInstance${idInstance}/ReceiveNotification/${apiTokenInstance}`;
-
+  const handleReceiveMessages = async () => {
     try {
-      const response = await axios.get(url);
-      if (response.data) {
-        const message = response.data.body.messageData.textMessageData.textMessage;
-        console.log("Новое сообщение:", message);
-        setMessages([...messages, { text: message, isMe: false }]);
-
-        await axios.delete(
-          `https://api.green-api.com/waInstance${idInstance}/DeleteNotification/${apiTokenInstance}/${response.data.receiptId}`
-        );
+      const message = await fetchMessage(idInstance, apiTokenInstance);
+      if (message !== null) {
+        setMessages((prevMessages) => [...prevMessages, { text: message, isMe: false }]);
       }
     } catch (error) {
       console.error("Ошибка получения сообщения:", error);
@@ -57,13 +43,13 @@ const Chat = ({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && newMessage.trim()) {
       e.preventDefault();
-      sendMessage(newMessage);
+      handleSendMessage(newMessage);
     }
   };
 
   useEffect(() => {
     const interval = setInterval(() => {
-      receiveMessage();
+      handleReceiveMessages();
     }, 5000);
 
     return () => clearInterval(interval);
@@ -73,7 +59,7 @@ const Chat = ({
     <div className="flex flex-col h-screen bg-gray-100">
       <div className="flex items-center bg-white p-4 shadow-md">
         <img src={UserIcon} width={40} height={40} alt="" />
-        <h1 className="text-lg text-gray-800 font-bold ml-3">Чат с {phone}</h1>
+        <p className="text-md md:text-lg text-gray-800 font-bold ml-3">Чат с {phone}</p>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -97,13 +83,13 @@ const Chat = ({
             value={newMessage}
             onKeyDown={handleKeyDown}
             onChange={(e) => setNewMessage(e.target.value)}
-            className="flex-1 text-black py-6 border border-gray-300 bg-gray-100 rounded-lg focus:outline-none focus:ring-1 focus-visible:ring-green-500"
+            className="flex-1 text-md md:text-lg text-black py-6 border border-gray-300 bg-gray-100 rounded-lg focus:outline-none focus:ring-1 focus-visible:ring-green-500"
             placeholder="Введите сообщение..."
           />
           <Button
-            onClick={() => sendMessage(newMessage)}
+            onClick={() => handleSendMessage(newMessage)}
             disabled={!newMessage.trim()}
-            className="bg-green-500 text-white font-semibold text-md lg:text-lg p-6 rounded-lg hover:border-none border-0 focus:outline-none focus:ring-1 focus:ring-green-600  hover:bg-green-600 transition duration-300"
+            className="bg-green-500 text-white font-semibold text-md md:text-lg p-6 rounded-lg hover:border-none border-0 focus:outline-none focus:ring-1 focus:ring-green-600  hover:bg-green-600 transition duration-300"
           >
             Отправить
           </Button>

@@ -1,7 +1,8 @@
 import { useState } from "react";
+import axios from "axios";
+import * as Yup from "yup";
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
-import * as Yup from "yup";
 
 const AuthForm = ({ onAuth }: { onAuth: (id: string, token: string, phoneNumber: string) => void }) => {
   const [idInstance, setIdInstance] = useState("");
@@ -9,6 +10,7 @@ const AuthForm = ({ onAuth }: { onAuth: (id: string, token: string, phoneNumber:
   const [phoneNumber, setPhoneNumber] = useState("");
   const [step, setStep] = useState(1);
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const step1Schema = Yup.object().shape({
     idInstance: Yup.string()
@@ -30,12 +32,22 @@ const AuthForm = ({ onAuth }: { onAuth: (id: string, token: string, phoneNumber:
   const handleNext = async () => {
     try {
       await step1Schema.validate({ idInstance, apiTokenInstance }, { abortEarly: false });
-      setError("");
-      setStep(2);
+      setIsLoading(true);
+      const response = await axios.get(
+        `https://api.green-api.com/waInstance${idInstance}/getSettings/${apiTokenInstance}`
+      );
+      if (response.data) {
+        setError("");
+        setStep(2);
+      }
     } catch (err) {
       if (err instanceof Yup.ValidationError) {
         setError(err.errors[0]);
+      } else {
+        setError("Неверные idInstance или apiTokenInstance.");
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -78,9 +90,9 @@ const AuthForm = ({ onAuth }: { onAuth: (id: string, token: string, phoneNumber:
               type="button"
               onClick={handleNext}
               className="w-full font-semibold text-md bg-green-500 text-white p-5 rounded-lg hover:bg-green-600 hover:border-0 focus:outline-0 border-0 transition duration-300"
-              disabled={!idInstance.trim() || !apiTokenInstance.trim()}
+              disabled={!idInstance.trim() || !apiTokenInstance.trim() || isLoading}
             >
-              Вперед
+              {isLoading ? "Проверка..." : "Вперед"}
             </Button>
           </div>
         ) : (
@@ -95,6 +107,7 @@ const AuthForm = ({ onAuth }: { onAuth: (id: string, token: string, phoneNumber:
             <Button
               type="submit"
               className="w-full font-semibold text-md bg-green-500 text-white p-5 rounded-lg hover:bg-green-600 hover:border-0 focus:outline-0 border-0 transition duration-300"
+              disabled={!phoneNumber.trim()}
             >
               Войти
             </Button>
